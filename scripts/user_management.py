@@ -1,6 +1,7 @@
 from scripts.data_storage import get_db_connection
 import json
 from datetime import datetime
+import bcrypt  # Install dengan: pip install bcrypt
 
 def create_user(user_data):
     """
@@ -78,5 +79,74 @@ def get_user(user_id):
         return dict(user), 200
     except Exception as e:
         return {"error": str(e)}, 500
+    
+def register_user(user_data):
+    """
+    Register a new user.
+    """
+    try:
+        user_id = user_data.get("userId")
+        user_name = user_data.get("userName", "")
+        email = user_data.get("email", "")
+        password = user_data.get("password", "")
+        date_birth = user_data.get("dateBirth", "")
+        date_reg = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        age = calculate_age(date_birth) if date_birth else None
+
+        if not (user_id and email and password):
+            return {"error": "userId, email, and password are required"}, 400
+
+        hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Check if email is already registered
+        cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+        if cursor.fetchone():
+            return {"error": "Email is already registered"}, 409
+
+        # Insert new user
+        cursor.execute("""
+            INSERT INTO users (userId, dateReg, userName, email, password, dateBirth, age)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (user_id, date_reg, user_name, email, hashed_password, date_birth, age))
+
+        conn.commit()
+        conn.close()
+        return {"message": "User registered successfully"}, 201
+    except Exception as e:
+        return {"error": str(e)}, 500
 
 
+def login_user(user_data):
+    """
+    Login a user.
+    """
+    try:
+        email = user_data.get("email", "")
+        password = user_data.get("password", "")
+
+        if not (email and password):
+            return {"error": "Email and password are required"}, 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get user by email
+        cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+        user = cursor.fetchone()
+        conn.close()
+
+        if not user:
+            return {"error": "Invalid email or password"}, 401
+
+        stored_password = user["password"]
+
+        # Verify password
+        if not bcrypt.checkpw(password.encode("utf-8"), stored_password):
+            return {"error": "Invalid email or password"}, 401
+
+        return {"message": "Login successful", "userId": user["userId"]}, 200
+    except Exception as e:
+        return {"error": str(e)}, 500

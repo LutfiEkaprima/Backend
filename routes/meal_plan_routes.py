@@ -45,7 +45,6 @@ def get_user_meal_plan(user_id):
         conn.close()
 
         if not meal_plan:
-            generate_meal_plan(user_id)  # Generate a new meal plan if not found
             return jsonify({"error": "No meal plan found for this user"}), 404
 
         # Format meal plan data
