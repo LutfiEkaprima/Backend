@@ -1,0 +1,51 @@
+user registration:
+POST =
+{
+    "userId": "2",
+    "userName": "Jane Doe",
+    "email": "jane.doe@example.com",
+    "password": "12345",
+    "weight": 70,
+    "dateBirth": "1990-05-15",
+    "age": 34
+}
+GET = http://127.0.0.1:8080/user/1
+
+recipe search:
+POST =
+{
+    "query": "salad"
+}
+or
+{
+    "query": "salad",
+    "filters": {
+        "paleo":true,
+        "low carb":true
+    }
+}
+GET = http://127.0.0.1:8080/recipes/search?query=salad
+
+weekly meal plan:
+POST = 
+{
+    "userId": "1"
+}
+or
+{
+    "userId": "1",
+    "tags": {
+        "is_vegetarian": true,
+        "is_low_fat": true
+    }
+}
+GET = http://127.0.0.1:8080/meal_plan/1/
+
+recipe details:
+GET = http://127.0.0.1:8080/recipe_details/Boudin%20Blanc%20Terrine%20with%20Red%20Onion%20Confit/
+
+daily recommendations:
+POST =
+{
+    "userId": "1"
+}
