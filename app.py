@@ -1,5 +1,6 @@
 import os
 from flask import Flask
+from flask import Flask, send_from_directory
 from routes.user_routes import user_blueprint
 from routes.recipe_routes import recipe_blueprint
 from routes.meal_plan_routes import meal_plan_blueprint
@@ -18,6 +19,10 @@ app.register_blueprint(recipe_details_blueprint, url_prefix="/recipe_details")
 app.register_blueprint(daily_recommendations_blueprint, url_prefix="/daily_recommendations")
 app.register_blueprint(image_classification_blueprint, url_prefix="/image")
 app.register_blueprint(auth_blueprint, url_prefix="/auth")
+
+@app.route('/image/<path:filename>')
+def serve_image(filename):
+    return send_from_directory('image', filename)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))

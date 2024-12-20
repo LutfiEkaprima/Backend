@@ -1,15 +1,50 @@
 from scripts.data_storage import get_db_connection
+from fuzzywuzzy import fuzz
+import os
 
-def search_recipes(user_input):
+def get_matching_image(title, image_directory, threshold=65):
+    """
+    Find matching image for recipe title using fuzzy string matching.
+    
+    :param title: Recipe title
+    :param image_directory: Directory containing recipe images
+    :param threshold: Minimum similarity score (default 65 for 65% match)
+    :return: Image filename if match found, None otherwise
+    """
+    # Get list of image files from directory
+    image_files = [f for f in os.listdir(image_directory) 
+                  if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))]
+    
+    # Remove file extensions for matching
+    title_clean = title.lower()
+    best_match = None
+    best_score = 0
+    
+    for image_file in image_files:
+        # Remove extension for comparison
+        image_name = os.path.splitext(image_file)[0].lower()
+        # Calculate similarity score
+        score = fuzz.ratio(title_clean, image_name)
+        
+        if score > best_score and score >= threshold:
+            best_score = score
+            best_match = image_file
+    
+    if best_match:
+        # Use forward slash and manually join paths
+        return f"/{image_directory}/{best_match}".replace('\\', '/')
+    return None
+
+def search_recipes(user_input, image_directory="image"):
     """
     Search for recipes based on a query and user-defined filters.
     :param user_input: Dictionary containing the search query and filter criteria.
+    :param image_directory: Directory containing recipe images
     :return: A list of recipes matching the search query and filters.
     """
-    query = user_input.get("query", "").lower()  # Extract query from user input
-    filters = user_input.get("filters", {})  # Extract filters
+    query = user_input.get("query", "").lower()
+    filters = user_input.get("filters", {})
 
-    # Mapping of user-friendly filter names to actual column names
     filter_column_mapping = {
         "vegetarian": "is_vegetarian",
         "vegan": "is_vegan",
@@ -31,29 +66,25 @@ def search_recipes(user_input):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Build the WHERE clause dynamically
     query_conditions = []
     params = []
 
     if query:
         query_conditions.append("(title LIKE ? OR ingredients LIKE ?)")
-        params.extend([f"%{query}%", f"%{query}%"])  # Partial matching
+        params.extend([f"%{query}%", f"%{query}%"])
 
     for tag, value in filters.items():
         if value:
-            # Map user-friendly names to actual column names
             column_name = filter_column_mapping.get(tag, tag)
             query_conditions.append(f"{column_name} = 1")
 
-    # Combine all conditions
-    where_clause = " AND ".join(query_conditions) if query_conditions else "1 = 1"  # Default to no filter
+    where_clause = " AND ".join(query_conditions) if query_conditions else "1 = 1"
     sql_query = f"SELECT * FROM recipes WHERE {where_clause}"
 
     cursor.execute(sql_query, params)
     recipes = cursor.fetchall()
     conn.close()
 
-    # Format and return the results
     formatted_recipes = []
     for recipe in recipes:
         dietary = {key: recipe[val] for key, val in {
@@ -80,12 +111,15 @@ def search_recipes(user_input):
             'rice', 'shrimp', 'tofu', 'tomato', 'zucchini'
         ] if recipe[f'has_{ingredient}'] == 1}
 
-        # Limit dietary preferences to 2 and ingredients to 3
         dietary = dict(list(dietary.items())[:2])
         ingredients = dict(list(ingredients.items())[:3])
+        
+        # Find matching image for recipe
+        image_path = get_matching_image(recipe["title"], image_directory)
 
         formatted_recipes.append({
             "title": recipe["title"],
+            "image": image_path,  # Will be None if no matching image found
             "meal_type": {
                 "breakfast": recipe["is_breakfast"],
                 "lunch": recipe["is_lunch"],
@@ -99,16 +133,16 @@ def search_recipes(user_input):
 
     return formatted_recipes
 
-def search_recipes_by_query(query):
+def search_recipes_by_query(query, image_directory="image"):
     """
     Search for recipes based on a query string.
     :param query: The search query string.
+    :param image_directory: Directory containing recipe images
     :return: A list of recipes matching the search query.
     """
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # SQL query to search in title or ingredients
     cursor.execute("""
         SELECT * FROM recipes
         WHERE title LIKE ? OR ingredients LIKE ?
@@ -117,7 +151,6 @@ def search_recipes_by_query(query):
     recipes = cursor.fetchall()
     conn.close()
 
-    # Format and return the results
     formatted_recipes = []
     for recipe in recipes:
         dietary = {key: recipe[val] for key, val in {
@@ -144,12 +177,15 @@ def search_recipes_by_query(query):
             'rice', 'shrimp', 'tofu', 'tomato', 'zucchini'
         ] if recipe[f'has_{ingredient}'] == 1}
 
-        # Limit dietary preferences to 2 and ingredients to 3
         dietary = dict(list(dietary.items())[:2])
         ingredients = dict(list(ingredients.items())[:3])
 
+        # Find matching image for recipe
+        image_path = get_matching_image(recipe["title"], image_directory)
+
         formatted_recipes.append({
             "title": recipe["title"],
+            "image": image_path,  # Will be None if no matching image found
             "meal_type": {
                 "breakfast": recipe["is_breakfast"],
                 "lunch": recipe["is_lunch"],
