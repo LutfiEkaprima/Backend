@@ -85,7 +85,6 @@ def register_user(user_data):
     Register a new user.
     """
     try:
-        user_id = user_data.get("userId")
         user_name = user_data.get("userName", "")
         email = user_data.get("email", "")
         password = user_data.get("password", "")
@@ -93,8 +92,8 @@ def register_user(user_data):
         date_reg = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         age = calculate_age(date_birth) if date_birth else None
 
-        if not (user_id and email and password):
-            return {"error": "userId, email, and password are required"}, 400
+        if not (email and password):
+            return {"error": "Email and password are required"}, 400
 
         hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
 
@@ -108,13 +107,16 @@ def register_user(user_data):
 
         # Insert new user
         cursor.execute("""
-            INSERT INTO users (userId, dateReg, userName, email, password, dateBirth, age)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (user_id, date_reg, user_name, email, hashed_password, date_birth, age))
+            INSERT INTO users (dateReg, userName, email, password, dateBirth, age)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (date_reg, user_name, email, hashed_password, date_birth, age))
+
+        # Fetch the newly generated userId
+        new_user_id = cursor.lastrowid
 
         conn.commit()
         conn.close()
-        return {"message": "User registered successfully"}, 201
+        return {"message": "User registered successfully", "userId": new_user_id}, 201
     except Exception as e:
         return {"error": str(e)}, 500
 

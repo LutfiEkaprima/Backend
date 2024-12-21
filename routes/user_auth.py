@@ -16,12 +16,12 @@ def register():
 
     # Register user
     response, status = register_user(user_data)
-    
+
     if status == 201:  # Jika berhasil terdaftar
-        user_id = user_data.get('userId')  # Ambil user_id dari respons registrasi
+        user_id = response.get('userId')  # Ambil userId dari respons registrasi
         if not user_id:
             return jsonify({"error": "User ID not found"}), 500
-        
+
         # Generate meal plan untuk user yang baru terdaftar
         try:
             meal_plan = generate_meal_plan(user_id)
