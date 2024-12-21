@@ -48,4 +48,12 @@ daily recommendations:
 POST =
 {
     "userId": "1"
+    "current_time": "15:00"
+}
+
+http://127.0.0.1:8080/daily-recommendations/
+
+{
+    "userId": 1,
+    "current_time": "23:30"
 }
