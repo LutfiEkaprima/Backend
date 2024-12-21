@@ -5,7 +5,7 @@ from scripts.weekly_meal_plan import generate_meal_plan  # Import fungsi generat
 # Inisialisasi Blueprint
 auth_blueprint = Blueprint("auth", __name__)
 
-@auth_blueprint.route("/register", methods=["GET"])
+@auth_blueprint.route("/register", methods=["POST"])
 def register():
     """
     Endpoint untuk registrasi pengguna baru.

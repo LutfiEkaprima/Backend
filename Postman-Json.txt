@@ -1,5 +1,6 @@
 user registration:
-POST =
+
+POST = http://127.0.0.1:8080/auth/register
 {
     "userId": "2",
     "userName": "Jane Doe",
@@ -9,7 +10,13 @@ POST =
     "dateBirth": "1990-05-15",
     "age": 34
 }
+
+User Login :
+GET = http://127.0.0.1:8080/auth/login
+
+User Data :
 GET = http://127.0.0.1:8080/user/1
+
 
 recipe search:
 POST =
@@ -24,25 +31,15 @@ or
         "low carb":true
     }
 }
-GET = http://127.0.0.1:8080/recipes/search?query=salad
+GET = http://127.0.0.1:8080/recipes/search?query=toast&page=1&page_size=100
+
 
 weekly meal plan:
 POST = 
 {
     "userId": "1"
 }
-or
-{
-    "userId": "1",
-    "tags": {
-        "is_vegetarian": true,
-        "is_low_fat": true
-    }
-}
 GET = http://127.0.0.1:8080/meal_plan/1/
-
-recipe details:
-GET = http://127.0.0.1:8080/recipe_details/Boudin%20Blanc%20Terrine%20with%20Red%20Onion%20Confit/
 
 daily recommendations:
 POST =
@@ -50,10 +47,4 @@ POST =
     "userId": "1"
     "current_time": "15:00"
 }
-
-http://127.0.0.1:8080/daily-recommendations/
-
-{
-    "userId": 1,
-    "current_time": "23:30"
-}
+GET = http://127.0.0.1:8080/daily-recommendations/
