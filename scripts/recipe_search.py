@@ -48,6 +48,7 @@ def search_recipes(user_input, page=1, page_size=100):
     sql_query = f"SELECT title, image, is_breakfast, is_lunch, is_dinner, is_snack, is_dessert, " \
                 f"is_vegetarian, is_vegan, is_pescatarian, is_paleo, is_dairy_free, is_fat_free, " \
                 f"is_peanut_free, is_soy_free, is_wheat_free, is_low_carb, is_low_cal, is_low_fat, " \
+                f"calories, protein, fat, sodium, ingredients, directions, rating, directions, categories, desc, date" \
                 f"is_low_sodium, is_low_sugar, is_low_cholesterol FROM recipes WHERE {where_clause} " \
                 f"LIMIT ? OFFSET ?"
 
@@ -90,6 +91,16 @@ def search_recipes(user_input, page=1, page_size=100):
                 "dessert": recipe["is_dessert"]
             },
             "dietary": dietary,
+            "calories": recipe["calories"],
+            "protein": recipe["protein"],
+            "fat": recipe["fat"],
+            "sodium": recipe["sodium"],
+            "rating": recipe["rating"],
+            "ingredients": recipe["ingredients"],
+            "directions": recipe["directions"],
+            "categories": recipe["categories"],
+            "desc": recipe["desc"],
+            "date": recipe["date"]
         })
 
     return formatted_recipes
@@ -108,7 +119,7 @@ def search_recipes_by_query(query, page=1, page_size=100):
 
     offset = (page - 1) * page_size
     cursor.execute("""
-        SELECT title, image, is_breakfast, is_lunch, is_dinner, is_snack, is_dessert FROM recipes
+        SELECT title, image, is_breakfast, is_lunch, is_dinner, is_snack, is_dessert, calories, protein, fat, sodium, ingredients, directions, rating, directions, categories, desc, date, rating FROM recipes
         WHERE title LIKE ? OR ingredients LIKE ?
         LIMIT ? OFFSET ?
     """, (f"%{query}%", f"%{query}%", page_size, offset))
@@ -127,7 +138,17 @@ def search_recipes_by_query(query, page=1, page_size=100):
                 "dinner": recipe["is_dinner"],
                 "snack": recipe["is_snack"],
                 "dessert": recipe["is_dessert"]
-            }
+            },
+            "calories": recipe["calories"],
+            "protein": recipe["protein"],
+            "fat": recipe["fat"],
+            "sodium": recipe["sodium"],
+            "rating": recipe["rating"],
+            "ingredients": recipe["ingredients"],
+            "directions": recipe["directions"],
+            "categories": recipe["categories"],
+            "desc": recipe["desc"],
+            "date": recipe["date"]
         })
 
     return formatted_recipes
