@@ -1,9 +1,11 @@
 from scripts.data_storage import get_db_connection
 
-def search_recipes(user_input):
+def search_recipes(user_input, page=1, page_size=100):
     """
-    Search for recipes based on a query and user-defined filters.
+    Search for recipes based on a query and user-defined filters with pagination.
     :param user_input: Dictionary containing the search query and filter criteria.
+    :param page: Page number to retrieve.
+    :param page_size: Number of results per page.
     :return: A list of recipes matching the search query and filters.
     """
     query = user_input.get("query", "").lower()
@@ -46,7 +48,12 @@ def search_recipes(user_input):
     sql_query = f"SELECT title, image, is_breakfast, is_lunch, is_dinner, is_snack, is_dessert, " \
                 f"is_vegetarian, is_vegan, is_pescatarian, is_paleo, is_dairy_free, is_fat_free, " \
                 f"is_peanut_free, is_soy_free, is_wheat_free, is_low_carb, is_low_cal, is_low_fat, " \
-                f"is_low_sodium, is_low_sugar, is_low_cholesterol FROM recipes WHERE {where_clause}"
+                f"is_low_sodium, is_low_sugar, is_low_cholesterol FROM recipes WHERE {where_clause} " \
+                f"LIMIT ? OFFSET ?"
+
+    # Calculate offset
+    offset = (page - 1) * page_size
+    params.extend([page_size, offset])
 
     cursor.execute(sql_query, params)
     recipes = cursor.fetchall()
@@ -88,19 +95,23 @@ def search_recipes(user_input):
     return formatted_recipes
 
 
-def search_recipes_by_query(query):
+def search_recipes_by_query(query, page=1, page_size=100):
     """
-    Search for recipes based on a query string.
+    Search for recipes based on a query string with pagination.
     :param query: The search query string.
+    :param page: Page number to retrieve.
+    :param page_size: Number of results per page.
     :return: A list of recipes matching the search query.
     """
     conn = get_db_connection()
     cursor = conn.cursor()
 
+    offset = (page - 1) * page_size
     cursor.execute("""
         SELECT title, image, is_breakfast, is_lunch, is_dinner, is_snack, is_dessert FROM recipes
         WHERE title LIKE ? OR ingredients LIKE ?
-    """, (f"%{query}%", f"%{query}%"))
+        LIMIT ? OFFSET ?
+    """, (f"%{query}%", f"%{query}%", page_size, offset))
 
     recipes = cursor.fetchall()
     conn.close()

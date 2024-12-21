@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify
-import json
+import ijson
 from pathlib import Path
 
 # Define the Blueprint
@@ -7,7 +7,7 @@ recipe_details_blueprint = Blueprint("recipe_details_route", __name__)
 
 def get_recipe_details(title):
     """
-    Retrieve the details of a specific recipe by title.
+    Retrieve recipe details using a streaming parser.
     """
     try:
         # Path to the JSON file
@@ -16,34 +16,32 @@ def get_recipe_details(title):
         if not json_path.exists():
             return {"error": f"Recipe_Details.json file not found at {json_path}"}, 404
 
-        # Load the JSON file
+        # Open the JSON file and stream parse
         with open(json_path, "r", encoding="utf-8") as f:
-            recipes = json.load(f)
+            # ijson.items reads each top-level item as a Python dictionary
+            recipes = ijson.items(f, "item")
 
-        # Find the recipe with the given title (case-insensitive match)
-        recipe = next((r for r in recipes if r["title"].strip().lower() == title.strip().lower()), None)
+            for recipe in recipes:
+                # Case-insensitive match for the title
+                if recipe["title"].strip().lower() == title.strip().lower():
+                    # Return only the matched recipe
+                    return {
+                        "title": recipe["title"],
+                        "description": recipe.get("desc", "No description"),
+                        "calories": recipe.get("calories", 0),
+                        "protein": recipe.get("protein", 0),
+                        "fat": recipe.get("fat", 0),
+                        "sodium": recipe.get("sodium", 0),
+                        "rating": recipe.get("rating", 0),
+                        "ingredients": recipe.get("ingredients", []),
+                        "directions": recipe.get("directions", []),
+                        "categories": recipe.get("categories", []),
+                        "date": recipe.get("date", "Unknown"),
+                    }
 
-        if not recipe:
-            return {"error": f"Recipe with title '{title}' not found"}, 404
+        # If no recipe is found, return an error
+        return {"error": f"Recipe with title '{title}' not found"}, 404
 
-        # Format the response to exclude unnecessary keys (if needed)
-        formatted_recipe = {
-            "title": recipe["title"],
-            "description": recipe["desc"],
-            "calories": recipe["calories"],
-            "protein": recipe["protein"],
-            "fat": recipe["fat"],
-            "sodium": recipe["sodium"],
-            "rating": recipe.get("rating", 0),  # Default to 0 if not provided
-            "ingredients": recipe["ingredients"],
-            "directions": recipe["directions"],
-            "categories": recipe["categories"],
-            "date": recipe["date"]
-        }
-
-        return formatted_recipe
-    except json.JSONDecodeError:
-        return {"error": "Invalid JSON file. Please check the format."}, 500
     except Exception as e:
         return {"error": str(e)}, 500
 
