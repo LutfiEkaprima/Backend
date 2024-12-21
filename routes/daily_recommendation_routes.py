@@ -8,119 +8,163 @@ daily_recommendations_blueprint = Blueprint("daily_recommendations", __name__)
 def get_recommendations(meal_type, user_restrictions, num_recommendations=10):
     """
     Fetch recommendations for the given meal type and user restrictions.
-    :param meal_type: The type of meal (e.g., breakfast, lunch, etc.).
-    :param user_restrictions: User's restrictions like cons_pork and cons_alcohol.
-    :param num_recommendations: Number of recipes to recommend.
-    :return: A list of recommended recipes.
+    :param meal_type: The type of meal (breakfast, lunch, dinner, snack, dessert)
+    :param user_restrictions: User's dietary restrictions
+    :param num_recommendations: Number of recipes to recommend
+    :return: List of recommended recipes
     """
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Query recipes matching the meal type and excluding restricted ingredients
-    restrictions = []
-    if user_restrictions.get("cons_pork") == 0:  # User doesn't allow pork
-        restrictions.append("has_pork = 0")
-    if user_restrictions.get("cons_alcohol") == 0:  # User doesn't allow alcohol
-        restrictions.append("has_alcohol = 0")
+    # Build the base query with all necessary fields
+    base_query = """
+        SELECT title, image, is_breakfast, is_lunch, is_dinner, is_snack, is_dessert, 
+               is_vegetarian, is_vegan, is_pescatarian, is_paleo, is_dairy_free, 
+               is_fat_free, is_peanut_free, is_soy_free, is_wheat_free, is_low_carb,
+               is_low_cal, is_low_fat, is_low_sodium, is_low_sugar, is_low_cholesterol,
+               calories, protein, fat, sodium, ingredients, directions, rating,
+               categories, desc, date
+        FROM recipes
+        WHERE is_{} = 1
+    """.format(meal_type)
 
-    # Build the query
-    where_clause = " AND ".join([f"is_{meal_type} = 1"] + restrictions)
-    query = f"SELECT * FROM recipes WHERE {where_clause}"
-    cursor.execute(query)
+    # Add restriction conditions
+    conditions = []
+    params = []
+
+    # Handle dietary restrictions
+    if user_restrictions:
+        for restriction, value in user_restrictions.items():
+            if value == 0:  # User doesn't allow this
+                if restriction == "cons_pork":
+                    conditions.append("(ingredients NOT LIKE ? OR ingredients IS NULL)")
+                    params.append("%pork%")
+                elif restriction == "cons_alcohol":
+                    conditions.append("(ingredients NOT LIKE ? OR ingredients IS NULL)")
+                    params.append("%alcohol%")
+                # Add more restrictions as needed
+
+    # Combine all conditions
+    if conditions:
+        base_query += " AND " + " AND ".join(conditions)
+
+    # Add randomization and limit
+    base_query += " ORDER BY RANDOM() LIMIT ?"
+    params.append(num_recommendations)
+
+    # Execute query
+    cursor.execute(base_query, params)
     recipes = cursor.fetchall()
     conn.close()
 
     if not recipes:
         return []
 
-    # Convert sqlite3.Row objects to dictionaries
-    recipes = [dict(recipe) for recipe in recipes]
+    # Format the recipes
+    formatted_recipes = []
+    for recipe in recipes:
+        # Get dietary tags
+        dietary = {
+            tag: recipe[f"is_{tag.replace(' ', '_')}"]
+            for tag in [
+                "vegetarian", "vegan", "pescatarian", "paleo", "dairy_free",
+                "fat_free", "peanut_free", "soy_free", "wheat_free", "low_carb",
+                "low_cal", "low_fat", "low_sodium", "low_sugar", "low_cholesterol"
+            ]
+            if recipe[f"is_{tag.replace(' ', '_')}"] == 1
+        }
 
-    # Randomly select the required number of recipes
-    return random.sample(recipes, min(len(recipes), num_recommendations))
+        # Format recipe data
+        formatted_recipe = {
+            "title": recipe["title"],
+            "image": recipe["image"],
+            "meal_type": meal_type,
+            "dietary": dietary,
+            "nutrition": {
+                "calories": recipe["calories"],
+                "protein": recipe["protein"],
+                "fat": recipe["fat"],
+                "sodium": recipe["sodium"]
+            },
+            "rating": recipe["rating"],
+            "ingredients": recipe["ingredients"],
+            "directions": recipe["directions"],
+            "categories": recipe["categories"],
+            "description": recipe["desc"],
+            "date_added": recipe["date"]
+        }
+        formatted_recipes.append(formatted_recipe)
+
+    return formatted_recipes
 
 @daily_recommendations_blueprint.route("/", methods=["POST"])
 def recommend():
     """
-    Recommend recipes based on the current time and user restrictions.
+    Get recipe recommendations based on current time and user preferences.
     """
     try:
-        # Get user data from the request
+        # Get user data from request
         user_data = request.get_json()
-        if not user_data or "userId" not in user_data:
-            return jsonify({"error": "Missing userId in the request body"}), 400
+        if not user_data or "userId" not in user_data or "current_time" not in user_data:
+            return jsonify({"error": "Missing userId or current_time in request body"}), 400
 
         user_id = user_data["userId"]
+        current_time = user_data["current_time"]
 
-        # Fetch user restrictions from the database
+        # Validate current_time format (e.g., HH:MM)
+        try:
+            current_hour, current_minute = map(int, current_time.split(":"))
+            if not (0 <= current_hour < 24 and 0 <= current_minute < 60):
+                raise ValueError
+        except ValueError:
+            return jsonify({"error": "Invalid current_time format. Expected HH:MM"}), 400
+
+        # Fetch user restrictions from database
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT cons_pork, cons_alcohol FROM users WHERE userId = ?", (user_id,))
+        cursor.execute("""
+            SELECT cons_pork, cons_alcohol
+            FROM users 
+            WHERE userId = ?
+        """, (user_id,))
         user_restrictions = cursor.fetchone()
         conn.close()
 
         if not user_restrictions:
             return jsonify({"error": "User not found"}), 404
 
-        # Convert sqlite3.Row to dictionary
+        # Convert to dictionary
         user_restrictions = dict(user_restrictions)
 
-        # Determine current time and meal type
-        current_hour = datetime.now().hour
-        if 5 <= current_hour < 12:
+        # Determine meal type based on user-provided current_time
+        if 5 <= current_hour < 11:
             meal_type = "breakfast"
-        elif 12 <= current_hour < 17:
+        elif 11 <= current_hour < 16:
             meal_type = "lunch"
-        elif 17 <= current_hour < 21:
+        elif 16 <= current_hour < 22:
             meal_type = "dinner"
         else:
-            meal_type = random.choice(["snack", "dessert"])  # Nighttime can be either snack or dessert
+            meal_type = random.choice(["snack", "dessert"])
 
-        # Fetch recommendations
-        recommendations = get_recommendations(meal_type, user_restrictions)
+        # Get recommendations
+        recommendations = get_recommendations(
+            meal_type=meal_type,
+            user_restrictions=user_restrictions,
+            num_recommendations=10
+        )
 
         if not recommendations:
-            return jsonify({"message": f"No {meal_type} recipes found"}), 404
+            return jsonify({
+                "message": f"No {meal_type} recipes found matching your preferences"
+            }), 404
 
-        # Format the response
-        formatted_recommendations = []
-        for recipe in recommendations:
-            dietary = {key: recipe[val] for key, val in {
-                "vegetarian": "is_vegetarian",
-                "vegan": "is_vegan",
-                "pescatarian": "is_pescatarian",
-                "paleo": "is_paleo",
-                "dairy free": "is_dairy_free",
-                "fat free": "is_fat_free",
-                "peanut free": "is_peanut_free",
-                "soy free": "is_soy_free",
-                "wheat free": "is_wheat_free",
-                "low carb": "is_low_carb",
-                "low cal": "is_low_cal",
-                "low fat": "is_low_fat",
-                "low sodium": "is_low_sodium",
-                "low sugar": "is_low_sugar",
-                "low cholesterol": "is_low_cholesterol"
-            }.items() if recipe[val] == 1}
+        response_data = {
+            "meal_type": meal_type,
+            "provided_time": current_time,
+            "recommendations": recommendations
+        }
 
-            ingredients = {ingredient: recipe[f'has_{ingredient}'] for ingredient in [
-                'pork', 'alcohol', 'beef', 'bread', 'butter', 'cabbage', 'carrot', 'cheese',
-                'chicken', 'egg', 'eggplant', 'fish', 'onion', 'pasta', 'peanut', 'potato',
-                'rice', 'shrimp', 'tofu', 'tomato', 'zucchini'
-            ] if recipe[f'has_{ingredient}'] == 1}
-
-            # Limit dietary preferences to 2 and ingredients to 3
-            dietary = dict(list(dietary.items())[:2])
-            ingredients = dict(list(ingredients.items())[:3])
-
-            formatted_recommendations.append({
-                "title": recipe["title"],
-                "meal_type": meal_type,
-                "dietary": dietary,
-                "ingredients": ingredients
-            })
-
-        return jsonify({"meal_type": meal_type, "recommendations": formatted_recommendations}), 200
+        return jsonify(response_data), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
