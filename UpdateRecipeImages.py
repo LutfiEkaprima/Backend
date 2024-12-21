@@ -2,28 +2,31 @@ import os
 from scripts.data_storage import get_db_connection
 from fuzzywuzzy import fuzz
 
-def update_recipe_images(image_directory):
+def update_all_recipe_images(image_directory):
     """
-    Update the "image" field in the "recipes" table by matching images in the specified directory
-    to the recipe titles, only if the "image" field is NULL.
+    Update the "image" field in the "recipes" table for all rows using
+    images in the specified directory.
 
     :param image_directory: Directory containing recipe images.
     """
     # Get list of image files in the directory
     image_files = [f for f in os.listdir(image_directory) 
-                  if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))]
+                   if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))]
+
+    # Replace spaces with dashes in image file names
+    image_files = [f.replace(" ", "-") for f in image_files]
 
     # Establish database connection
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Fetch all recipe titles and their current image status from the database
-    cursor.execute("SELECT title FROM recipes WHERE image IS NULL")
+    # Fetch all recipe titles from the database
+    cursor.execute("SELECT title FROM recipes")
     recipes = cursor.fetchall()
 
     for recipe in recipes:
         (title,) = recipe
-        title_clean = title.lower()
+        title_clean = title.lower().replace(" ", "-")  # Replace spaces with dashes in the title
 
         best_match = None
         best_score = 0
@@ -41,7 +44,7 @@ def update_recipe_images(image_directory):
 
         if best_match:
             # Construct the image path
-            image_path = f"{image_directory}/{best_match}"
+            image_path = f"http://158.140.161.26:8080/{image_directory}/{best_match}"
 
             # Update the database with the matched image path
             cursor.execute(
@@ -60,4 +63,4 @@ if __name__ == "__main__":
     image_dir = "image"
 
     # Run the image update script
-    update_recipe_images(image_dir)
+    update_all_recipe_images(image_dir)
