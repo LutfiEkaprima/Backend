@@ -32,7 +32,7 @@ def register():
     return jsonify(response), status
 
 
-@auth_blueprint.route("/login", methods=["GET"]) 
+@auth_blueprint.route("/login", methods=["POST"]) 
 def login():
     """
     Endpoint untuk login pengguna.
