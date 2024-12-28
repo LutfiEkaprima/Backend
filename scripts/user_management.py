@@ -76,9 +76,20 @@ def get_user(user_id):
         if not user:
             return {"error": f"User with ID {user_id} not found"}, 404
 
-        return dict(user), 200
+        # Convert user data to dictionary and handle bytes
+        user_dict = dict(user)
+        
+        # Convert password bytes to string if it exists
+        if 'password' in user_dict and isinstance(user_dict['password'], bytes):
+            user_dict['password'] = user_dict['password'].decode('utf-8', errors='ignore')
+            
+        # Remove password from response for security
+        user_dict.pop('password', None)
+
+        return user_dict, 200
     except Exception as e:
         return {"error": str(e)}, 500
+
     
 def register_user(user_data):
     """
