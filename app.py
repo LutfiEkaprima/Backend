@@ -6,7 +6,7 @@ from routes.recipe_routes import recipe_blueprint
 from routes.meal_plan_routes import meal_plan_blueprint
 from routes.recipe_details_routes import recipe_details_blueprint
 from routes.daily_recommendation_routes import daily_recommendations_blueprint 
-from routes.image_classification_routes import image_classification_blueprint
+#from routes.image_classification_routes import image_classification_blueprint
 from routes.user_auth import auth_blueprint
 
 app = Flask(__name__)
