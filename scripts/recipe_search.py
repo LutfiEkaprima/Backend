@@ -106,32 +106,92 @@ def search_recipes(user_input, page=1, page_size=100):
     return formatted_recipes
 
 
-def search_recipes_by_query(query, page=1, page_size=100):
+def search_recipes_by_query(query, filters=None, page=1, page_size=100):
     """
-    Search for recipes based on a query string with pagination.
-    :param query: The search query string.
-    :param page: Page number to retrieve.
-    :param page_size: Number of results per page.
-    :return: A list of recipes matching the search query.
+    Search for recipes based on a query string and filters with pagination.
+    :param query: The search query string
+    :param filters: String of comma-separated filter names (e.g., "lunch,vegan")
+    :param page: Page number to retrieve
+    :param page_size: Number of results per page
+    :return: A list of recipes matching the search query and filters
     """
+    # Define filter mapping at the start of the function
+    filter_mapping = {
+        "breakfast": "is_breakfast",
+        "lunch": "is_lunch",
+        "dinner": "is_dinner",
+        "snack": "is_snack",
+        "dessert": "is_dessert",
+        "vegetarian": "is_vegetarian",
+        "vegan": "is_vegan",
+        "pescatarian": "is_pescatarian",
+        "paleo": "is_paleo",
+        "dairy_free": "is_dairy_free",
+        "fat_free": "is_fat_free",
+        "peanut_free": "is_peanut_free",
+        "soy_free": "is_soy_free",
+        "wheat_free": "is_wheat_free",
+        "low_carb": "is_low_carb",
+        "low_cal": "is_low_cal",
+        "low_fat": "is_low_fat",
+        "low_sodium": "is_low_sodium",
+        "low_sugar": "is_low_sugar",
+        "low_cholesterol": "is_low_cholesterol"
+    }
+
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    offset = (page - 1) * page_size
-    cursor.execute("""
-        SELECT title, image, is_breakfast, is_lunch, is_dinner, is_snack, is_dessert, calories, protein, fat, sodium, ingredients, directions, rating, directions, categories, desc, date, rating FROM recipes
-        WHERE title LIKE ? OR ingredients LIKE ?
-        LIMIT ? OFFSET ?
-    """, (f"%{query}%", f"%{query}%", page_size, offset))
+    query_conditions = []
+    params = []
 
+    # Add search query condition
+    if query:
+        query_conditions.append("(title LIKE ? OR ingredients LIKE ?)")
+        params.extend([f"%{query}%", f"%{query}%"])
+
+    # Add filter conditions
+    if filters:
+        filter_list = filters.split(',')
+        for filter_name in filter_list:
+            filter_name = filter_name.strip().lower()
+            if filter_name in filter_mapping:
+                query_conditions.append(f"{filter_mapping[filter_name]} = 1")
+
+    # Construct WHERE clause
+    where_clause = " AND ".join(query_conditions) if query_conditions else "1=1"
+    
+    # Calculate offset for pagination
+    offset = (page - 1) * page_size
+
+    sql_query = """
+        SELECT title, image, is_breakfast, is_lunch, is_dinner, is_snack, is_dessert,
+               calories, protein, fat, sodium, ingredients, directions, rating, 
+               categories, desc, date, is_vegetarian, is_vegan, is_pescatarian, 
+               is_paleo, is_dairy_free, is_fat_free, is_peanut_free, is_soy_free, 
+               is_wheat_free, is_low_carb, is_low_cal, is_low_fat, is_low_sodium, 
+               is_low_sugar, is_low_cholesterol
+        FROM recipes 
+        WHERE {} 
+        LIMIT ? OFFSET ?
+    """.format(where_clause)
+
+    params.extend([page_size, offset])
+    cursor.execute(sql_query, params)
     recipes = cursor.fetchall()
     conn.close()
 
     formatted_recipes = []
     for recipe in recipes:
+        # Get all dietary flags that are True (1)
+        dietary = {}
+        for key, val in filter_mapping.items():
+            if val in recipe and recipe[val] == 1:
+                dietary[key] = True
+
         formatted_recipes.append({
             "title": recipe["title"],
-            "image": recipe["image"],  # Path image langsung dari database
+            "image": recipe["image"],
             "meal_type": {
                 "breakfast": recipe["is_breakfast"],
                 "lunch": recipe["is_lunch"],
@@ -139,6 +199,7 @@ def search_recipes_by_query(query, page=1, page_size=100):
                 "snack": recipe["is_snack"],
                 "dessert": recipe["is_dessert"]
             },
+            "dietary": dietary,
             "calories": recipe["calories"],
             "protein": recipe["protein"],
             "fat": recipe["fat"],

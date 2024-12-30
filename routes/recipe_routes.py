@@ -22,13 +22,21 @@ def search():
 @recipe_blueprint.route("/search", methods=["GET"])
 def search_get():
     """
-    Search for recipes based on a query passed as a URL parameter with pagination.
+    Search for recipes based on query and filters passed as URL parameters.
+    Example: /search?query=salad&filters=lunch,vegan
     """
     try:
-        query = request.args.get("query", "").lower()  # Get query parameter from URL
-        page = int(request.args.get("page", 1))  # Default page = 1
-        page_size = int(request.args.get("page_size", 100))  # Default page size = 100
-        results = search_recipes_by_query(query, page=page, page_size=page_size)
+        query = request.args.get("query", "").lower()
+        filters = request.args.get("filters", "")
+        page = int(request.args.get("page", 1))
+        page_size = int(request.args.get("page_size", 100))
+        
+        results = search_recipes_by_query(
+            query=query,
+            filters=filters,
+            page=page,
+            page_size=page_size
+        )
         return jsonify(results), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
