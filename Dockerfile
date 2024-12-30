@@ -19,9 +19,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the entire application into the container
 COPY . .
 
-# Copy the trained model file into the container
-COPY path/to/your/model.h5 /app/model.h5
-
 # Expose port 8080 to the outside world
 EXPOSE 8080
 
@@ -31,4 +28,3 @@ ENV FLASK_RUN_HOST=0.0.0.0
 
 # Run the Flask application with Gunicorn
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
-
