@@ -1,11 +1,20 @@
-import sqlite3
-from pathlib import Path
+import mysql.connector
+from mysql.connector import Error
 
 def get_db_connection():
     """
-    Create a database connection to the NutriDish database.
+    Create a database connection to the NutriDish database using MySQL.
     """
-    db_path = Path(__file__).resolve().parent.parent / "data" / "NutriDish.db"
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row  # Return rows as dictionaries
-    return conn
+    try:
+        conn = mysql.connector.connect(
+            host='Server Address',
+            database='Database Name',
+            user='Database User',
+            password='Database Password'
+        )
+        if conn.is_connected():
+            print("Connected to MySQL database")
+            return conn
+    except Error as e:
+        print(f"Error: {e}")
+        return None
