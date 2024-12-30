@@ -7,10 +7,10 @@ def get_db_connection():
     """
     try:
         conn = mysql.connector.connect(
-            host='Server Address',
-            database='Database Name',
-            user='Database User',
-            password='Database Password'
+            host='158.140.161.26',
+            database='NutriDish',
+            user='nutridish_user',
+            password='@Dewagt23'
         )
         if conn.is_connected():
             print("Connected to MySQL database")
