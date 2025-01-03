@@ -44,7 +44,7 @@ def update_all_recipe_images(image_directory):
 
         if best_match:
             # Construct the image path
-            image_path = f"http://158.140.161.26:8080/{image_directory}/{best_match}"
+            image_path = f"https://backend-nwyn.onrender.com/{image_directory}/{best_match}"
 
             # Update the database with the matched image path
             cursor.execute(
