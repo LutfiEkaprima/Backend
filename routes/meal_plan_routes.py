@@ -49,14 +49,34 @@ def get_user_meal_plan(user_id):
 
         # Format meal plan data
         formatted_meal_plan = {}
+        
         for meal in meal_plan:
-            meal_type = meal["mealType"]  # Using column names
+            meal_type = meal["mealType"]
             if meal_type not in formatted_meal_plan:
                 formatted_meal_plan[meal_type] = []
             formatted_meal_plan[meal_type].append({
-                "title": meal["recipeTitle"],  # Using column names
-                "date_used": meal["dateUsed"]  # Using column names
-            })
+                "title": meal["recipeTitle"],
+                "date_used": meal["dateUsed"],
+                "image": meal["image"],
+                "meal_type": {
+                    "breakfast": meal["is_breakfast"],
+                    "lunch": meal["is_lunch"],
+                    "dinner": meal["is_dinner"],
+                    "snack": meal["is_snack"],
+                    "dessert": meal["is_dessert"]
+                },
+                # "dietary": meal["dietary"],
+                "calories": meal["calories"],
+                "protein": meal["protein"],
+                "fat": meal["fat"],
+                "sodium": meal["sodium"],
+                "rating": meal["rating"],
+                "ingredients": meal["ingredients"],
+                "directions": meal["directions"],
+                "categories": meal["categories"],
+                "desc": meal["desc"],
+                "date": meal["date"]  
+                })
 
         return jsonify({"user_id": user_id, "meal_plan": formatted_meal_plan}), 200
     except Exception as e:
