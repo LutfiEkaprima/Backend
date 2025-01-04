@@ -150,7 +150,7 @@ def recommend():
         recommendations = get_recommendations(
             meal_type=meal_type,
             user_restrictions=user_restrictions,
-            num_recommendations=10
+            num_recommendations=1
         )
 
         if not recommendations:
